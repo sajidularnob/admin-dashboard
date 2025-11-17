@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" x-data="dashboard()" x-init="init()">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <script>
+    document.addEventListener('alpine:init', () => {
+      fetch('components/sidebar.html')
+        .then(res => res.text())
+        .then(html => {
+          document.querySelector('[x-ref="sidebarContainer"]').innerHTML = html;
+        });
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="assets/js/dashboard.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body :class="darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-100 text-gray-900'" class="flex h-screen font-sans w-full">
+
+ <div class="flex h-full">
+    <!-- Sidebar Container -->
+    <div x-ref="sidebarContainer" class="h-full flex-shrink-0"></div>
+  <!-- Main Content -->
+  <div class="flex-1 flex flex-col">
+    <!-- Navbar -->
+    <header :class="darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'" class="flex justify-between items-center p-4 shadow">
+      <h1 class="text-xl font-bold">Dashboard</h1>
+      <div class="flex items-center space-x-4">
+        <button class="relative p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
+          <span class="material-icons">notifications</span>
+          <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+        <div class="flex items-center space-x-2">
+          <span>Omor</span>
+          <img src="assets/img/profile.png" alt="Profile" class="w-8 h-8 rounded-full">
+        </div>
+      </div>
+    </header>
+
+    <!-- KPI Cards -->
+    <main class="p-4 flex-1 overflow-auto">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div :class="darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'" class="p-4 rounded shadow flex flex-col">
+          <span class="text-gray-400">Total Users</span>
+          <span class="text-2xl font-bold" x-text="users.length"></span>
+        </div>
+        <div :class="darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'" class="p-4 rounded shadow flex flex-col">
+          <span class="text-gray-400">Active Projects</span>
+          <span class="text-2xl font-bold">12</span>
+        </div>
+        <div :class="darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'" class="p-4 rounded shadow flex flex-col">
+          <span class="text-gray-400">Revenue</span>
+          <span class="text-2xl font-bold">$5,230</span>
+        </div>
+      </div>
+
+      <!-- Sample Chart -->
+      <div :class="darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'" class="p-4 rounded shadow mb-6">
+        <canvas id="kpiChart" class="w-full h-48"></canvas>
+      </div>
+
+      <!-- Users Table -->
+      <div :class="darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'" class="p-4 rounded shadow">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="font-bold text-lg">Users</h2>
+          <div class="flex space-x-2">
+            <input type="text" placeholder="Search..." x-model="search"
+              class="border rounded px-2 py-1 focus:outline-none focus:ring focus:border-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
+            <button @click="openModal()" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-500 transition">Add User</button>
+          </div>
+        </div>
+        <table class="w-full table-auto border-collapse">
+          <thead>
+            <tr :class="darkMode ? 'bg-gray-700' : 'bg-gray-100'">
+              <th class="border px-2 py-1">Name</th>
+              <th class="border px-2 py-1">Email</th>
+              <th class="border px-2 py-1">Role</th>
+              <th class="border px-2 py-1">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="user in filteredUsers()" :key="user.id">
+              <tr>
+                <td class="border px-2 py-1" x-text="user.name"></td>
+                <td class="border px-2 py-1" x-text="user.email"></td>
+                <td class="border px-2 py-1" x-text="user.role"></td>
+                <td class="border px-2 py-1 space-x-2">
+                  <button @click="openModal(user)" class="text-blue-500 hover:text-blue-400">Edit</button>
+                  <button @click="deleteUser(user.id)" class="text-red-500 hover:text-red-400">Delete</button>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div x-show="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    x-transition>
+    <div :class="darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'" class="p-6 rounded shadow w-96" @click.away="modalOpen = false">
+      <h3 class="text-lg font-bold mb-4" x-text="modalData.id ? 'Edit User' : 'Add User'"></h3>
+      <div class="flex flex-col space-y-2">
+        <input type="text" placeholder="Name" x-model="modalData.name"
+          class="border rounded px-2 py-1 focus:outline-none focus:ring focus:border-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
+        <input type="email" placeholder="Email" x-model="modalData.email"
+          class="border rounded px-2 py-1 focus:outline-none focus:ring focus:border-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
+        <select x-model="modalData.role" class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
+          <option>Admin</option>
+          <option>Editor</option>
+          <option>Viewer</option>
+        </select>
+      </div>
+      <div class="flex justify-end mt-4 space-x-2">
+        <button @click="modalOpen = false" class="px-3 py-1 rounded border hover:bg-gray-200 dark:hover:bg-gray-700">Cancel</button>
+        <button @click="saveUser()" class="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-500">Save</button>
+      </div>
+    </div>
+  </div>
+ 
+</body>
+</html>
